@@ -1,0 +1,326 @@
+{
+  "info": {
+    "name": "Parking Slot Reservation - Spring Boot API",
+    "description": "CRUD + business-rule test suite for the Facility, ParkingSlot and Reservation REST endpoints. Run requests top-to-bottom within a folder: creates capture ids into collection variables that later requests reuse.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "facilityId", "value": "" },
+    { "key": "secondFacilityId", "value": "" },
+    { "key": "slotId", "value": "" },
+    { "key": "secondSlotId", "value": "" },
+    { "key": "reservationId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Facility",
+      "item": [
+        {
+          "name": "Create Facility",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 201', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('facilityId', body.id);"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/facilities",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Downtown Parking\",\n  \"address\": \"KN 3 Ave\",\n  \"city\": \"Kigali\",\n  \"totalSlots\": 2\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Facility (validation error - missing name)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 400', () => pm.response.to.have.status(400));",
+              "pm.test('field error present', () => pm.response.json().fieldErrors.name !== undefined);"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/facilities",
+            "body": { "mode": "raw", "raw": "{\n  \"address\": \"no name here\",\n  \"totalSlots\": 1\n}" }
+          }
+        },
+        {
+          "name": "Create Facility (duplicate name - 409)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 409', () => pm.response.to.have.status(409));"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/facilities",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Downtown Parking\",\n  \"address\": \"dup\",\n  \"city\": \"Kigali\",\n  \"totalSlots\": 1\n}" }
+          }
+        },
+        {
+          "name": "Get All Facilities",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/facilities" }
+        },
+        {
+          "name": "Get Facility By Id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/facilities/{{facilityId}}" }
+        },
+        {
+          "name": "Update Facility",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/facilities/{{facilityId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Downtown Parking - Updated\",\n  \"address\": \"KN 3 Ave\",\n  \"city\": \"Kigali\",\n  \"totalSlots\": 3\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Facility (blocked while slots exist - 409)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 409 because slots exist', () => pm.response.to.have.status(409));"
+            ] } }
+          ],
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/facilities/{{facilityId}}" }
+        }
+      ]
+    },
+    {
+      "name": "ParkingSlot",
+      "item": [
+        {
+          "name": "Create Slot 1",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 201', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('slotId', body.id);"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/slots",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotNumber\": \"A1\",\n  \"vehicleType\": \"CAR\",\n  \"price\": 500,\n  \"facilityId\": \"{{facilityId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Slot 2",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 201', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('secondSlotId', body.id);"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/slots",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotNumber\": \"A2\",\n  \"vehicleType\": \"MOTORCYCLE\",\n  \"price\": 200,\n  \"facilityId\": \"{{facilityId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Slot 3 (capacity exceeded - 409)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 409 because facility totalSlots is 2', () => pm.response.to.have.status(409));"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/slots",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotNumber\": \"A3\",\n  \"vehicleType\": \"CAR\",\n  \"price\": 500,\n  \"facilityId\": \"{{facilityId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Slot (duplicate slot number in facility - 409)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 409', () => pm.response.to.have.status(409));"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/slots",
+            "body": { "mode": "raw", "raw": "{\n  \"slotNumber\": \"A1\",\n  \"vehicleType\": \"CAR\",\n  \"price\": 500,\n  \"facilityId\": \"{{facilityId}}\"\n}" }
+          }
+        },
+        {
+          "name": "Get All Slots",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/slots" }
+        },
+        {
+          "name": "Get Slot By Id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/slots/{{slotId}}" }
+        },
+        {
+          "name": "Get Slots By Facility",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/slots/facility/{{facilityId}}" }
+        },
+        {
+          "name": "Get Available Slots (filter by facility + vehicleType)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/slots/available?facilityId={{facilityId}}&vehicleType=CAR" }
+        },
+        {
+          "name": "Update Slot",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/slots/{{slotId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotNumber\": \"A1\",\n  \"vehicleType\": \"CAR\",\n  \"price\": 550,\n  \"facilityId\": \"{{facilityId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Slot 2 (no active reservation - succeeds)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 204', () => pm.response.to.have.status(204));"
+            ] } }
+          ],
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/slots/{{secondSlotId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Reservation",
+      "item": [
+        {
+          "name": "Create Reservation",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 201', () => pm.response.to.have.status(201));",
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set('reservationId', body.id);",
+              "pm.test('status is CONFIRMED', () => body.status === 'CONFIRMED');",
+              "pm.test('totalAmount computed from duration', () => body.totalAmount === 1500);"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": \"{{slotId}}\",\n  \"customerName\": \"Delphin Nshuti\",\n  \"customerEmail\": \"delphin@example.com\",\n  \"vehiclePlate\": \"RAD123A\",\n  \"startTime\": \"2026-12-01T10:00:00\",\n  \"endTime\": \"2026-12-01T13:00:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Overlapping Reservation (409)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 409 due to overlap', () => pm.response.to.have.status(409));"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": \"{{slotId}}\",\n  \"customerName\": \"Someone Else\",\n  \"customerEmail\": \"other@example.com\",\n  \"vehiclePlate\": \"RAD999B\",\n  \"startTime\": \"2026-12-01T12:00:00\",\n  \"endTime\": \"2026-12-01T14:00:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Reservation (end before start - 400)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 400', () => pm.response.to.have.status(400));"
+            ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": \"{{slotId}}\",\n  \"customerName\": \"Bad Timing\",\n  \"vehiclePlate\": \"RAD000Z\",\n  \"startTime\": \"2026-12-01T15:00:00\",\n  \"endTime\": \"2026-12-01T14:00:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get All Reservations",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/reservations" }
+        },
+        {
+          "name": "Get Reservation By Id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/reservations/{{reservationId}}" }
+        },
+        {
+          "name": "Get Reservations By Facility",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/reservations/facility/{{facilityId}}" }
+        },
+        {
+          "name": "Reschedule Reservation (Update)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/reservations/{{reservationId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": \"{{slotId}}\",\n  \"customerName\": \"Delphin Nshuti\",\n  \"customerEmail\": \"delphin@example.com\",\n  \"vehiclePlate\": \"RAD123A\",\n  \"startTime\": \"2026-12-01T16:00:00\",\n  \"endTime\": \"2026-12-01T18:00:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Cancel Reservation",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 200', () => pm.response.to.have.status(200));",
+              "pm.test('status is CANCELLED', () => pm.response.json().status === 'CANCELLED');"
+            ] } }
+          ],
+          "request": { "method": "PATCH", "url": "{{baseUrl}}/api/reservations/{{reservationId}}/cancel" }
+        },
+        {
+          "name": "Cancel Reservation Again (409 already cancelled)",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('status is 409', () => pm.response.to.have.status(409));"
+            ] } }
+          ],
+          "request": { "method": "PATCH", "url": "{{baseUrl}}/api/reservations/{{reservationId}}/cancel" }
+        },
+        {
+          "name": "Verify Slot Freed After Cancel",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('slot status is AVAILABLE again', () => pm.response.json().status === 'AVAILABLE');"
+            ] } }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/slots/{{slotId}}" }
+        },
+        {
+          "name": "Delete Reservation",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/reservations/{{reservationId}}" }
+        }
+      ]
+    }
+  ]
+}
